@@ -23,8 +23,7 @@ The following directives are equal (supposed that `css!` is the default plugin f
 ```
 
 
-Configuration
-=============
+## Configuration
 
 The following configuration settings are supported (name - type - can it be set in resource name? - description):
 
@@ -59,14 +58,12 @@ Some configuration settings can be defined in resource name in the following for
 name=value[;name=value...]
 `
 
-Dependencies
-============
+## Dependencies
 
 * `text`, `css` and `link` plugins
 * utility modules from `util` subdirectory
 
-Usage
-=====
+## Usage
 
 ```javascript
 // loads some/folder/view.html
@@ -77,7 +74,6 @@ define(['view!some/folder/view.html'], {});
 define(['view!some/folder/view!cssLoader=link'], {});
 ```
 
-Licence
-=====
+## Licence
 
 MIT
