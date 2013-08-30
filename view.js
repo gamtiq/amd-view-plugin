@@ -1,8 +1,8 @@
 /**
  * view.js
- * curl view! plugin.
+ * AMD view! plugin.
  *
- * @version 0.2.0
+ * @version 0.2.1
  * @author Denis Sikuler
  * @license MIT License (c) 2012-2013 Copyright Denis Sikuler
  */
@@ -11,7 +11,7 @@
 
 /*
  * 
-    curl view! plugin
+    AMD view! plugin
    
     This plugin loads text/html file using `text!` plugin,
     parses and processes dependency directives (tags) that are found in the file content,
@@ -22,9 +22,9 @@
     * `<link rel="stylesheet" href="[plugin!]path/to/some/style.css">` - specifies CSS-file that should be loaded along with resource;
         CSS-files can be loaded by `css!` or `link!` plugin; the plugin that should be used by default can be set in configuration settings.
     * `<link rel="x-require" [type="plugin"] href="[plugin!]path/to/some/dependency">` - specifies dependency that should be loaded along with resource;
-        `plugin` that should be used for resource loading can be set in type attribute or inside the resource name.
-    * `<link rel="x-include" [type="plugin"] href="[plugin!]path/to/some/inclusion.html">` - specifies inclusion that should be inserted inside the resource content instead of the directive;
-        `plugin` that should be used for resource loading can be set in type attribute or inside the resource name;
+        `plugin` that should be used for resource loading can be set in `type` attribute or inside the resource name.
+    * `<link rel="x-include" [type="plugin"] href="[plugin!]path/to/some/inclusion.html" [data-param="value"]>` - specifies inclusion that should be inserted 
+        inside the resource content instead of the directive; `plugin` that should be used for resource loading can be set in `type` attribute or inside the resource name;
         the default plugin can be specified in configuration settings.
     
     The following directives are equal (supposed that `css!` is the default plugin for CSS-files loading):
@@ -34,6 +34,25 @@
     <link rel="x-require" href="css!path/to/some/style.css">
     <link rel="x-require" type="css" href="path/to/some/style.css">
     ```
+    
+    ## Inclusions
+    
+    Inclusions allows composing the result from different parts which can be customized before injection.
+    Inclusion directive has the following form (parts in square brackets are optional):
+    `<link rel="x-include" [type="plugin"] href="[plugin!]path/to/some/inclusion.html" [data-param1="value1" data-param2="value2" ...]>`
+    
+    The resource that is specified inside the inclusion directive can result to plain text, a function or an object with `execute` method. 
+    In case of function/method the function/method will be called and the returned value will be used as the substitute for the directive.
+    
+    `data-` attributes can be set inside the directive. They form special `data` object that will be passed into the inclusion resource function.
+    Fields of `data` object are attributes names (without `data-` prefix), values are corresponding attributes values.
+    For the directive above, the `data` object will be the following:
+    
+        {
+            param1: "value1",
+            param2: "value2",
+            ...
+        }
     
     
     ## Configuration
@@ -55,14 +74,19 @@
          + `resource` - String - text after processing.
          + `depList` - Array - list of found dependencies.
          + `inclusionMap` - Object - an optional field that is describing dependencies that should be included into the resource's content;
-                 object's fields are inclusion names, field values are not used.
+                 object's fields are inclusion names, field values are objects describing corresponding inclusions (see `processTag` for details).
     * `processTag` - Function - No - function that should be used to process a tag found during parsing;
          the function takes 3 parameters: the tag text, the object representing tag attributes and 
          the settings object; the function should return an object with the following fields:
          + `dependency` - Array, String, null - a dependency or a list of dependencies
                  that is corresponding to the tag.
-         + `inclusion` - String, null - an optional field indicating that the dependency's content should be included into the resource's content;
-                 the field's value is the name of inclusion's resource.
+         + `inclusion` - Object, null - an optional field indicating that the dependency's content should be included into the resource's content;
+                 the field's value is the object with the following fields (name - type - description):
+                 - `data` - `Object, undefined` - data that should be used to process the inclusion (optional field);
+                         data fields can be set in `data-` attributes of the inclusion tag;
+                         the found attributes form contents of `data` object:
+                         fields are attributes names (without `data-` prefix), values are corresponding attributes values
+                 - `name` - `String` - the name of inclusion
          + `text` - String - a tag text after processing; the text will substitute for the original text.
     
     Some configuration settings can be defined in resource name in the following format:
@@ -167,15 +191,22 @@
      *      <ul>
      *      <li>dependency - Array, String, null - a dependency or a list of dependencies
      *              that is corresponding to the tag.
-     *      <li>inclusion - String, null - an optional field indicating that the dependency's content should be included into the resource's content;
-     *              the field's value is the name of inclusion.
+     *      <li>inclusion - Object, null - an optional field indicating that the dependency's content should be included into the resource's content;
+     *              the field's value is the object with the following fields (name - type - description):
+     *              <ul>
+     *              <li><code>data</code> - <code>Object, undefined</code> - data that should be used to process the inclusion (optional field);
+     *                  data fields can be set in <code>data-</code> attributes of the inclusion tag;
+     *                  the found attributes form contents of <code>data</code> object:
+     *                  fields are attributes names (without <code>data-</code> prefix), values are corresponding attributes values
+     *              <li><code>name</code> - <code>String</code> - the name of inclusion
+     *              </ul>
      *      <li>text - String - tag text after processing; will substitute for the original text
      *              in parsed resource; should be empty to delete the tag from resource.
      *      </ul>
      */
     defaultConfig.processTag = function(sTagText, attrMap, settings) {
         var result = {dependency: null, inclusion: null, text: ""},
-            sName, sType;
+            data, sName, sType;
         if (settings.filterTag(sTagText, attrMap, settings)) {
             sName = attrMap.href;
             sType = attrMap.rel.toLowerCase();
@@ -192,8 +223,17 @@
                 }
                 sName = settings.api.util.base.nameWithExt(sName, settings.defaultInclusionExt);
                 result.dependency = sName;
-                result.inclusion = sName;
                 result.text = sInclusionStart + sName + sInclusionEnd;
+                result.inclusion = {name: sName};
+                // Save values of data- attributes
+                for (sName in attrMap) {
+                    if (sName.substring(0, 5) === "data-") {
+                        (data || (data = {}))[sName.substring(5)] = attrMap[sName];
+                    }
+                }
+                if (data) {
+                    result.inclusion.data = data;
+                }
             }
             // Dependency
             else if (sType === "x-require") {
@@ -223,7 +263,7 @@
          *      <li>resource - String - text after processing.
          *      <li>depList - Array - list of found dependencies.
          *      <li>inclusionMap - Object, null - an optional field that is describing dependencies that should be included into the resource's content;
-         *              object's fields are inclusion names, field values are not used.
+         *              object's fields are inclusion names, field values are objects describing corresponding inclusions (see <code>processTag</code> for details).
          *      </ul>
          */
         defaultConfig.parse = function(sText, settings) {
@@ -253,8 +293,8 @@
                                 if (! inclusionMap) {
                                     inclusionMap = {};
                                 }
-                                if (! (dependency in inclusionMap)) {
-                                    inclusionMap[dependency] = null;
+                                if (! (dependency.name in inclusionMap)) {
+                                    inclusionMap[dependency.name] = dependency;
                                 }
                             }
                             // Dependency
@@ -304,15 +344,15 @@
         
             // Auxiliary API
             
-            'convertSettings': convertSettings,
+            "convertSettings": convertSettings,
             
-            'filterTag': defaultConfig.filterTag,
+            "filterTag": defaultConfig.filterTag,
             
-            'processTag': defaultConfig.processTag,
+            "processTag": defaultConfig.processTag,
             
-            'parse': defaultConfig.parse,
+            "parse": defaultConfig.parse,
             
-            'util': {
+            "util": {
                 base: basicUtil,
                 object: objUtil,
                 string: strUtil
@@ -320,7 +360,7 @@
             
             // Plugin API
     
-            'load': function(sResourceName, require, callback, config) {
+            "load": function(sResourceName, require, callback, config) {
                 var nI = sResourceName.indexOf("!"),
                     mix = objUtil.mix,
                     conf, settings;
@@ -338,14 +378,26 @@
                             sText = (parseResult && typeof parseResult === "object" 
                                         ? parseResult.resource 
                                         : parseResult);
-                        
+                        // Load dependencies
                         if (parseResult && parseResult.depList && parseResult.depList.length) {
                             req(["require"].concat(parseResult.depList), function(loader) {
-                                var nI, resource, sInclusion;
+                                var inclMap = parseResult.inclusionMap,
+                                    inclData, nI, resource, sInclusion;
                                 // Make inclusions
-                                if (parseResult.inclusionMap) {
-                                    for (sInclusion in parseResult.inclusionMap) {
+                                if (inclMap) {
+                                    for (sInclusion in inclMap) {
                                         resource = loader( loader.toUrl(sInclusion) );
+                                        inclData = inclMap[sInclusion].data;
+                                        inclData = inclData
+                                                    ? [inclData]
+                                                    : [];
+                                        if (typeof resource === "function") {
+                                            resource = resource.apply(null, inclData);
+                                        }
+                                        else if (resource && typeof resource === "object" && typeof resource.execute === "function") {
+                                            resource = resource.execute.apply(resource, inclData);
+                                        }
+                                        resource = String(resource);
                                         sInclusion = sInclusionStart + sInclusion + sInclusionEnd;
                                         nI = 0;
                                         while ((nI = sText.indexOf(sInclusion, nI)) > -1) {

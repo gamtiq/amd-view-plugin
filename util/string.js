@@ -15,7 +15,7 @@ define([], function() {
     
     var 
         // RegExp to extract tag attributes and their values
-        attrRegExp = /(\w+)\s*=\s*("|')\s*(.*?)\s*\2/g,
+        attrRegExp = /(\w+(?:[\-\w]+)?)\s*=\s*("|')\s*(.*?)\s*\2/g,
         // RegExp to extract settings and their values
         settingRegExp = /(\w+)\s*=\s*(.*?)\s*(?:;|$)/g;
     
