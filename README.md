@@ -1,4 +1,6 @@
-`view!` plugin for [cujojs/curl loader](https://github.com/cujojs/curl)
+## AMD view! plugin.
+
+Compatible with [curl.js](https://github.com/cujojs/curl) and [require.js](http://requirejs.org/).
 
 This plugin loads text/html file using `text!` plugin,
 parses and processes dependency directives (tags) that are found in the file content,
@@ -55,6 +57,8 @@ The following configuration settings are supported (name - type - can it be set 
 * `filterTag` - Function - No - function that should be used to determine whether a tag is useful 
      and defines a dependency or the tag should be simply deleted;
      the function should return true for a useful tag and false for a tag that should be deleted.
+* `inclusionLoader` - String - Yes - name of plugin that should be used to load an inclusion file 
+     when loader is not specified in resource name; the default value is `'view'`
 * `parse` - Function - No - function that should be used to parse the loaded text;
      the function takes two parameters: the text and the settings object;
      the function should return an object with the following fields:
@@ -75,6 +79,34 @@ The following configuration settings are supported (name - type - can it be set 
                      fields are attributes names (without `data-` prefix), values are corresponding attributes values
              - `name` - `String` - the name of inclusion
      + `text` - String - a tag text after processing; the text will substitute for the original text.
+
+Configuration example for `curl.js`:
+```js
+// Before curl.js loading
+var curl = {
+    pluginPath: "path/to/plugins",
+    plugins: {
+        view: {
+            defaultExt: "view",
+            defaultInclusionExt: "inc",
+            inclusionLoader: "text"
+        }
+    }
+};
+```
+
+Configuration example for `require.js`:
+```js
+require.config({
+    config: {
+        view: {
+            defaultExt: "view",
+            defaultInclusionExt: "inc",
+            inclusionLoader: "text"
+        }
+    }
+});
+```
 
 Some configuration settings can be defined in resource name in the following format:
 

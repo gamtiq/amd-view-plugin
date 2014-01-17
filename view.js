@@ -2,9 +2,9 @@
  * view.js
  * AMD view! plugin.
  *
- * @version 0.2.1
+ * @version 0.2.2
  * @author Denis Sikuler
- * @license MIT License (c) 2012-2013 Copyright Denis Sikuler
+ * @license MIT License (c) 2012-2014 Copyright Denis Sikuler
  */
 (function () {
 "use strict";
@@ -68,6 +68,8 @@
     * `filterTag` - Function - No - function that should be used to determine whether a tag is useful 
          and defines a dependency or the tag should be simply deleted;
          the function should return true for a useful tag and false for a tag that should be deleted.
+    * `inclusionLoader` - String - Yes - name of plugin that should be used to load an inclusion file 
+         when loader is not specified in resource name; the default value is `'view'`
     * `parse` - Function - No - function that should be used to parse the loaded text;
          the function takes two parameters: the text and the settings object;
          the function should return an object with the following fields:
@@ -246,7 +248,7 @@
         return result;
     };
     
-    define(["./util/base", "./util/object", "./util/string"], function(basicUtil, objUtil, strUtil) {
+    define(["./util/base", "./util/object", "./util/string", "module"], function(basicUtil, objUtil, strUtil, module) {
     
         /**
          * Parses the given text and searches for &lt;link&gt; tags that are related to dependency directives.
@@ -369,6 +371,10 @@
                     settings = convertSettings( strUtil.extractSettings(sResourceName.substring(nI + 1)) );
                     sResourceName = sResourceName.substring(0, nI);
                 }
+                // Adaptation for require.js
+                if (config.config && typeof config.config === "object" && config.config[module.id]) {
+                    config = module.config();
+                }
                 conf = mix({}, defaultConfig, config, settings);
                 conf.api = mix({}, this);
                 // Load and parse resource
@@ -386,7 +392,10 @@
                                 // Make inclusions
                                 if (inclMap) {
                                     for (sInclusion in inclMap) {
-                                        resource = loader( loader.toUrl(sInclusion) );
+                                        // require.js has require.defined
+                                        resource = loader( typeof loader.defined === "function" && loader.defined(sInclusion)
+                                                            ? sInclusion
+                                                            : loader.toUrl(sInclusion) );
                                         inclData = inclMap[sInclusion].data;
                                         inclData = inclData
                                                     ? [inclData]
