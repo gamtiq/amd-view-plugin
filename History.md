@@ -1,3 +1,12 @@
+### 0.3.0 / 2014-06-29
+
+* added ability to make inclusion depending on condition
+* added examples
+
+### 0.2.2 / 2014-01-18
+
+* adaptation for require.js
+
 ### 0.2.1 / 2013-08-30
 
 * included resources can be functions or objects with `execute` method

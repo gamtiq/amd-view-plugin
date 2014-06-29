@@ -1,0 +1,10 @@
+<link rel="stylesheet" href="style/one.css">
+
+<div class="odd">One</div>
+<div class="even">Two</div>
+
+<link rel="x-require" href="css!style/two.css">
+
+<link rel="x-include" href="html/part">
+
+<link rel="x-include" href="html/part2" data-if="space.a < 10 && data.access">

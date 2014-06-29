@@ -2,7 +2,7 @@
  * view.js
  * AMD view! plugin.
  *
- * @version 0.2.2
+ * @version 0.3.0
  * @author Denis Sikuler
  * @license MIT License (c) 2012-2014 Copyright Denis Sikuler
  */
@@ -39,7 +39,7 @@
     
     Inclusions allows composing the result from different parts which can be customized before injection.
     Inclusion directive has the following form (parts in square brackets are optional):
-    `<link rel="x-include" [type="plugin"] href="[plugin!]path/to/some/inclusion.html" [data-param1="value1" data-param2="value2" ...]>`
+    `<link rel="x-include" [type="plugin"] href="[plugin!]path/to/some/inclusion.html" [data-if="condition" data-param1="value1" data-param2="value2" ...]>`
     
     The resource that is specified inside the inclusion directive can result to plain text, a function or an object with `execute` method. 
     In case of function/method the function/method will be called and the returned value will be used as the substitute for the directive.
@@ -49,11 +49,23 @@
     For the directive above, the `data` object will be the following:
     
         {
-            param1: "value1",
-            param2: "value2",
+            "if": "condition",
+            "param1": "value1",
+            "param2": "value2",
             ...
         }
     
+    You should not use ">" (greater than sign) in values of attributes because this sign represents the end of directive's tag.
+    
+    `data-if` attribute is interpreted in a special way. Its value is used to determine whether the directive should be processed.
+    If result of the value processing is true, the directive will be processed. Otherwise the directive will be deleted.
+    
+    By default eval'ing is used to process value of `data-if` attribute.
+    But this behavior can be redefined by using `processIf` configuration setting.
+    
+    eval'ing is made by using call of anonymous function. The function is called in context of parameter 
+    that is passed in `processIf` function (see below for details).
+    Object representing configuration settings is passed as the function parameter with name `data`.
     
     ## Configuration
     
@@ -77,6 +89,14 @@
          + `depList` - Array - list of found dependencies.
          + `inclusionMap` - Object - an optional field that is describing dependencies that should be included into the resource's content;
                  object's fields are inclusion names, field values are objects describing corresponding inclusions (see `processTag` for details).
+    * `processIf` - Function - No - function that should be used to process the value of `data-if` attribute of inclusion directive
+         to determine whether the directive should be processed;
+         the function takes the object with the following fields:
+         + `attrMap` - Object - attributes of the tag of inclusion directive; keys are attribute names, values are corresponding values
+         + `condition` - String - value of `data-if` attribute which should be used to determine whether inclusion directive should be processed
+         + `resource` - String - resource name from inclusion directive
+         + `settings` - Object - processing settings/configuration
+         + `tagText` - String - text of the tag of inclusion directive
     * `processTag` - Function - No - function that should be used to process a tag found during parsing;
          the function takes 3 parameters: the tag text, the object representing tag attributes and 
          the settings object; the function should return an object with the following fields:
@@ -179,6 +199,29 @@
     };
 
     /**
+     * Determines depending on the value of <code>data-if</code> attribute of inclusion directive whether the directive should be processed.
+     * <br>
+     * Result of eval'ing of the value of <code>data-if</code> attribute is used to determine whether inclusion directive should be processed.
+     * eval'ing is made by using call of anonymous function. The function is called in context of <code>data</code> parameter 
+     * and <code>data.settings</code> is passed as the function parameter with name <code>data</code>.
+     * 
+     * @param {Object} data
+     *      Represents data for the operation. The object has the following fields (name - type - description):
+     *      <ul>
+     *      <li>attrMap - Object - attributes of the tag of inclusion directive; keys are attribute names, values are corresponding values
+     *      <li>condition - String - value of <code>data-if</code> attribute which should be used to determine whether inclusion directive should be processed
+     *      <li>resource - String - resource name from inclusion directive
+     *      <li>settings - Object - processing settings/configuration; see {@link #parse}
+     *      <li>tagText - String - text of the tag of inclusion directive
+     *      </ul>
+     * @return {Boolean}
+     *      <code>true</code> if the inclusion directive should be processed, <code>false</code> if the directive should be deleted.
+     */
+    defaultConfig.processIf = function(data) {
+        return Boolean( (new Function("data", "return (" + data.condition + ")")).call(data, data.settings) );
+    };
+
+    /**
      * Processes a tag found during parsing and returns object that describes action
      * that should be taken upon this tag. 
      * 
@@ -220,21 +263,27 @@
             }
             // Inclusion
             else if (sType === "x-include") {
-                if (! pluginRegExp.test(sName)) {
-                    sName = (attrMap.type || settings.inclusionLoader) + "!" + sName;
-                }
-                sName = settings.api.util.base.nameWithExt(sName, settings.defaultInclusionExt);
-                result.dependency = sName;
-                result.text = sInclusionStart + sName + sInclusionEnd;
-                result.inclusion = {name: sName};
-                // Save values of data- attributes
-                for (sName in attrMap) {
-                    if (sName.substring(0, 5) === "data-") {
-                        (data || (data = {}))[sName.substring(5)] = attrMap[sName];
+                if (! ("data-if" in attrMap) || settings.processIf({condition: attrMap["data-if"], 
+                                                                    resource: sName, 
+                                                                    tagText: sTagText, 
+                                                                    attrMap: attrMap, 
+                                                                    settings: settings})) {
+                    if (! pluginRegExp.test(sName)) {
+                        sName = (attrMap.type || settings.inclusionLoader) + "!" + sName;
                     }
-                }
-                if (data) {
-                    result.inclusion.data = data;
+                    sName = settings.api.util.base.nameWithExt(sName, settings.defaultInclusionExt);
+                    result.dependency = sName;
+                    result.text = sInclusionStart + sName + sInclusionEnd;
+                    result.inclusion = {name: sName};
+                    // Save values of data- attributes
+                    for (sName in attrMap) {
+                        if (sName.substring(0, 5) === "data-") {
+                            (data || (data = {}))[sName.substring(5)] = attrMap[sName];
+                        }
+                    }
+                    if (data) {
+                        result.inclusion.data = data;
+                    }
                 }
             }
             // Dependency
@@ -349,6 +398,8 @@
             "convertSettings": convertSettings,
             
             "filterTag": defaultConfig.filterTag,
+            
+            "processIf": defaultConfig.processIf,
             
             "processTag": defaultConfig.processTag,
             

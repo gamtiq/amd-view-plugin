@@ -1,6 +1,6 @@
 ## AMD view! plugin.
 
-Compatible with [curl.js](https://github.com/cujojs/curl) and [require.js](http://requirejs.org/).
+Compatible with [curl.js](https://github.com/cujojs/curl) and [require.js](http://requirejs.org).
 
 This plugin loads text/html file using `text!` plugin,
 parses and processes dependency directives (tags) that are found in the file content,
@@ -28,7 +28,7 @@ The following directives are equal (supposed that `css!` is the default plugin f
 
 Inclusions allows composing the result from different parts which can be customized before injection.
 Inclusion directive has the following form (parts in square brackets are optional):
-`<link rel="x-include" [type="plugin"] href="[plugin!]path/to/some/inclusion.html" [data-param1="value1" data-param2="value2" ...]>`
+`<link rel="x-include" [type="plugin"] href="[plugin!]path/to/some/inclusion.html" [data-if="condition" data-param1="value1" data-param2="value2" ...]>`
 
 The resource that is specified inside the inclusion directive can result to plain text, a function or an object with `execute` method. 
 In case of function/method the function/method will be called and the returned value will be used as the substitute for the directive.
@@ -38,11 +38,23 @@ Fields of `data` object are attributes names (without `data-` prefix), values ar
 For the directive above, the `data` object will be the following:
 
     {
-        param1: "value1",
-        param2: "value2",
+        "if": "condition",
+        "param1": "value1",
+        "param2": "value2",
         ...
     }
 
+You should not use ">" (greater than sign) in values of attributes because this sign represents the end of directive's tag.
+
+`data-if` attribute is interpreted in a special way. Its value is used to determine whether the directive should be processed.
+If result of the value processing is true, the directive will be processed. Otherwise the directive will be deleted.
+
+By default eval'ing is used to process value of `data-if` attribute.
+But this behavior can be redefined by using `processIf` configuration setting.
+
+eval'ing is made by using call of anonymous function. The function is called in context of parameter 
+that is passed in `processIf` function (see below for details).
+Object representing configuration settings is passed as the function parameter with name `data`.
 
 ## Configuration
 
@@ -66,6 +78,14 @@ The following configuration settings are supported (name - type - can it be set 
      + `depList` - Array - list of found dependencies.
      + `inclusionMap` - Object - an optional field that is describing dependencies that should be included into the resource's content;
              object's fields are inclusion names, field values are objects describing corresponding inclusions (see `processTag` for details).
+* `processIf` - Function - No - function that should be used to process the value of `data-if` attribute of inclusion directive
+     to determine whether the directive should be processed;
+     the function takes the object with the following fields:
+     + `attrMap` - Object - attributes of the tag of inclusion directive; keys are attribute names, values are corresponding values
+     + `condition` - String - value of `data-if` attribute which should be used to determine whether inclusion directive should be processed
+     + `resource` - String - resource name from inclusion directive
+     + `settings` - Object - processing settings/configuration
+     + `tagText` - String - text of the tag of inclusion directive
 * `processTag` - Function - No - function that should be used to process a tag found during parsing;
      the function takes 3 parameters: the tag text, the object representing tag attributes and 
      the settings object; the function should return an object with the following fields:
@@ -84,6 +104,12 @@ Configuration example for `curl.js`:
 ```js
 // Before curl.js loading
 var curl = {
+    packages: {
+        "view": {
+            location: "path/to/plugins/view",
+            main: "view"
+        }
+    },
     pluginPath: "path/to/plugins",
     plugins: {
         view: {
@@ -98,8 +124,19 @@ var curl = {
 Configuration example for `require.js`:
 ```js
 require.config({
+    packages: [
+        {
+            name: "view",
+            location: "path/to/plugins/view",
+            main: "view"
+        }
+    ],
+    paths: {
+        "css": "path/to/plugins/css",
+        "text": "path/to/plugins/text"
+    },
     config: {
-        view: {
+        "view/view": {
             defaultExt: "view",
             defaultInclusionExt: "inc",
             inclusionLoader: "text"
@@ -129,6 +166,8 @@ define(['view!some/folder/view.html'], {});
 // and uses link plugin to load found CSS-files
 define(['view!some/folder/view!cssLoader=link'], {});
 ```
+
+See examples for details.
 
 ## Licence
 
