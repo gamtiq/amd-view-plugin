@@ -28,7 +28,9 @@ The following directives are equal (supposed that `css!` is the default plugin f
 
 Inclusions allows composing the result from different parts which can be customized before injection.
 Inclusion directive has the following form (parts in square brackets are optional):
-`<link rel="x-include" [type="plugin"] href="[plugin!]path/to/some/inclusion.html" [data-if="condition" data-param1="value1" data-param2="value2" ...]>`
+```html
+<link rel="x-include" [type="plugin"] href="[plugin!]path/to/some/inclusion.html" [data-if="condition" data-param1="value1" data-param2="value2" ...]>
+```
 
 The resource that is specified inside the inclusion directive can result to plain text, a function or an object with `execute` method. 
 In case of function/method the function/method will be called and the returned value will be used as the substitute for the directive.
@@ -44,7 +46,7 @@ For the directive above, the `data` object will be the following:
         ...
     }
 
-You should not use ">" (greater than sign) in values of attributes because this sign represents the end of directive's tag.
+You should not use `>` (greater than sign) in values of attributes because this sign represents the end of directive's tag.
 
 `data-if` attribute is interpreted in a special way. Its value is used to determine whether the directive should be processed.
 If result of the value processing is true, the directive will be processed. Otherwise the directive will be deleted.
@@ -105,7 +107,7 @@ Configuration example for `curl.js`:
 // Before curl.js loading
 var curl = {
     packages: {
-        "view": {
+        view: {
             location: "path/to/plugins/view",
             main: "view"
         }
@@ -132,8 +134,8 @@ require.config({
         }
     ],
     paths: {
-        "css": "path/to/plugins/css",
-        "text": "path/to/plugins/text"
+        css: "path/to/plugins/css",
+        text: "path/to/plugins/text"
     },
     config: {
         "view/view": {
