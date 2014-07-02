@@ -171,6 +171,10 @@ define(['view!some/folder/view!cssLoader=link'], {});
 
 See examples for details.
 
+## Related project
+
+Possibly you might find helpful [amd-proc-plugin](https://github.com/gamtiq/amd-proc-plugin).
+
 ## Licence
 
 MIT

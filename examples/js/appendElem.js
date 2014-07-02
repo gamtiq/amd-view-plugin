@@ -3,6 +3,6 @@ define([], function() {
         var doc = document,
             elem = doc.createElement("div");
         elem.innerHTML = text;
-        doc.body.appendChild(elem)
+        doc.body.appendChild(elem);
     };
 });
