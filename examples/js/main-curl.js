@@ -10,6 +10,7 @@ curl.config({
         "view": {
             defaultExt: "view",
             defaultInclusionExt: "inc",
+            directiveTag: ["link", "x-use"],
             inclusionLoader: "text",
             access: true
         }

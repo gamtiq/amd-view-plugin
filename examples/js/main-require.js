@@ -15,6 +15,7 @@ require.config({
         "view/view": {
             defaultExt: "view",
             defaultInclusionExt: "inc",
+            directiveTag: ["link", "x-use"],
             inclusionLoader: "text",
             access: true
         }

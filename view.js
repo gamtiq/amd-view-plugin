@@ -2,7 +2,7 @@
  * view.js
  * AMD view! plugin.
  *
- * @version 0.3.0
+ * @version 0.4.0
  * @author Denis Sikuler
  * @license MIT License (c) 2012-2014 Copyright Denis Sikuler
  */
@@ -18,29 +18,33 @@
     removes/replaces them in the content and loads the specified dependencies before returning result.
     The "refined" file content will be returned as resource value.
     
-    Dependency directive is `<link>` tag that can have one of the following forms (parts in square brackets are optional):
-    * `<link rel="stylesheet" href="[plugin!]path/to/some/style.css">` - specifies CSS-file that should be loaded along with resource;
+    Dependency directive is a tag (by default `<link>` and `<x-link>` tags are processed) that can have one of the following forms
+    (parts in square brackets are optional, alternatives are separated by |):
+    
+    * `<tag-name rel="stylesheet|css" href="[plugin!]path/to/some/style.css">` - specifies CSS-file that should be loaded along with resource;
         CSS-files can be loaded by `css!` or `link!` plugin; the plugin that should be used by default can be set in configuration settings.
-    * `<link rel="x-require" [type="plugin"] href="[plugin!]path/to/some/dependency">` - specifies dependency that should be loaded along with resource;
+    * `<tag-name rel="require|x-require" [type="plugin"] href="[plugin!]path/to/some/dependency">` - specifies dependency that should be loaded along with resource;
         `plugin` that should be used for resource loading can be set in `type` attribute or inside the resource name.
-    * `<link rel="x-include" [type="plugin"] href="[plugin!]path/to/some/inclusion.html" [data-param="value"]>` - specifies inclusion that should be inserted 
+    * `<tag-name rel="include|x-include" [type="plugin"] href="[plugin!]path/to/some/inclusion.html" [data-param="value"]>` - specifies inclusion that should be inserted 
         inside the resource content instead of the directive; `plugin` that should be used for resource loading can be set in `type` attribute or inside the resource name;
         the default plugin can be specified in configuration settings.
     
     The following directives are equal (supposed that `css!` is the default plugin for CSS-files loading):
     ```html
     <link rel="stylesheet" href="path/to/some/style.css">
-    <link rel="stylesheet" href="css!path/to/some/style.css">
+    <x-link rel="css" href="css!path/to/some/style.css">
     <link rel="x-require" href="css!path/to/some/style.css">
-    <link rel="x-require" type="css" href="path/to/some/style.css">
+    <x-link rel="require" type="css" href="path/to/some/style.css">
     ```
     
     ## Inclusions
     
     Inclusions allows composing the result from different parts which can be customized before injection.
-    Inclusion directive has the following form (parts in square brackets are optional):
+    Inclusion directive has the following form (parts in square brackets are optional, alternatives are separated by |):
     
-    `<link rel="x-include" [type="plugin"] href="[plugin!]path/to/some/inclusion.html" [data-if="condition" data-param1="value1" data-param2="value2" ...]>`
+    ```html
+    <tag-name rel="include|x-include" [type="plugin"] href="[plugin!]path/to/some/inclusion.html" [data-if="condition" data-param1="value1" data-param2="value2" ...]>
+    ```
     
     The resource that is specified inside the inclusion directive can result to plain text, a function or an object with `execute` method. 
     In case of function/method the function/method will be called and the returned value will be used as the substitute for the directive.
@@ -78,9 +82,18 @@
          the default value is `'html'`
     * `defaultInclusionExt` - String - Yes - default file extension for inclusions that will be inserted into result;
          the default value is `'html'`
+    * `directiveTag` - Array, String - No - name(s) of tags that should be parsed and processed as dependency directives;
+         the default value is `['link', 'x-link']`
+    * `findTag` - Function - No - function that should be used to find next tag which can represent the dependency directive
+         the function takes three parameters: the text, start position for search and the settings object;
+         the function should return an object with the following fields:
+         + `name` - String - name of found tag
+         + `position` - Integer - position of found tag (namely position of the corresponding &lt; (less than sign))
+         + `tagStart` - String - start of found tag ending by a space (i.e. "<tag-name ")
     * `filterTag` - Function - No - function that should be used to determine whether a tag is useful 
          and defines a dependency or the tag should be simply deleted;
-         the function should return true for a useful tag and false for a tag that should be deleted.
+         the function takes three parameters: the text, object tag attributes and the settings object;
+         the function should return true for a useful tag and false for a tag that should be deleted
     * `inclusionLoader` - String - Yes - name of plugin that should be used to load an inclusion file 
          when loader is not specified in resource name; the default value is `'view'`
     * `parse` - Function - No - function that should be used to parse the loaded text;
@@ -143,6 +156,7 @@
             cssLoader: "css",
             defaultExt: "html",
             defaultInclusionExt: "html",
+            directiveTag: ["link", "x-link"],
             inclusionLoader: "view"
         },
         // Regular expression to check plugin prefix
@@ -182,6 +196,48 @@
     }
 
     /**
+     * In the specified text looks for the first tag which can represent the dependency directive.
+     * 
+     * @param {String} sText
+     *      Text to look for a tag.
+     * @param {Integer} nStart
+     *      Position from which search should be started.
+     * @param {Object} settings
+     *      Processing settings/configuration. See {@link #parse}.
+     * @return {Object}
+     *      Data about found tag or <code>null</code> if no tag is found.
+     *      The data object has the following fields (name - type - description):
+     *      <ul>
+     *      <li>name - String - name of found tag
+     *      <li>position - Integer - position of found tag (namely position of the corresponding &lt; (less than sign))
+     *      <li>tagStart - String - start of found tag ending by a space (i.e. "<tag-name ")
+     *      </ul>
+     */
+    defaultConfig.findTag = function(sText, nStart, settings) {
+        var result = null,
+            tagList = settings.directiveTag,
+            nI, nK, nL, sName;
+        if (typeof tagList === "string") {
+            tagList = [tagList];
+        }
+        for (nI = 0, nL = tagList.length; nI < nL; nI++) {
+            sName = tagList[nI];
+            nK = sText.indexOf("<" + sName + " ", nStart);
+            if (nK > -1 && (! result || nK < result.position)) {
+                if (! result) {
+                    result = {};
+                }
+                result.position = nK;
+                result.name = sName;
+            }
+        }
+        if (result) {
+            result.tagStart = "<" + result.name + " ";
+        }
+        return result;
+    };
+
+    /**
      * Determines whether a tag is useful and defines a dependency or the tag should be simply deleted.
      * 
      * @param {String} sTagText
@@ -196,7 +252,9 @@
     defaultConfig.filterTag = function(sTagText, attrMap, settings) {
         var sType = attrMap.rel ? attrMap.rel.toLowerCase() : null;
         return sType && attrMap.href &&
-                (sType === "stylesheet" || sType === "x-include" || sType === "x-require");
+                (sType === "stylesheet" || sType === "css"
+                    || sType === "include" || sType === "x-include"
+                    || sType === "require" || sType === "x-require");
     };
 
     /**
@@ -257,13 +315,13 @@
             sName = attrMap.href;
             sType = attrMap.rel.toLowerCase();
             // CSS
-            if (sType === "stylesheet") {
+            if (sType === "stylesheet" || sType === "css") {
                 result.dependency = sName.indexOf("css!") === 0 || sName.indexOf("link!") === 0
                                     ? sName 
                                     : settings.cssLoader + "!" + sName;
             }
             // Inclusion
-            else if (sType === "x-include") {
+            else if (sType === "include" || sType === "x-include") {
                 if (! ("data-if" in attrMap) || settings.processIf({condition: attrMap["data-if"], 
                                                                     resource: sName, 
                                                                     tagText: sTagText, 
@@ -288,7 +346,7 @@
                 }
             }
             // Dependency
-            else if (sType === "x-require") {
+            else if (sType === "require" || sType === "x-require") {
                 if (attrMap.type && ! pluginRegExp.test(sName)) {
                     sName = attrMap.type + "!" + sName;
                 }
@@ -319,16 +377,17 @@
          *      </ul>
          */
         defaultConfig.parse = function(sText, settings) {
-            var sStart = "<link ",
+            var findTag = settings.findTag,
+                foundTag = findTag(sText, 0, settings),
                 sEnd = ">",
-                nI = sText.indexOf(sStart),
-                nStartLen = sStart.length,
                 nEndLen = sEnd.length,
                 deps = [],
                 depMap = {},
                 inclusionMap = null, 
-                dependency, nK, nL, nN, sDepName, sTag, tagResult;
-            while (nI > -1) {
+                dependency, nI, nK, nL, nN, nStartLen, sDepName, sTag, tagResult;
+            while (foundTag) {
+                nI = foundTag.position;
+                nStartLen = foundTag.tagStart.length;
                 nK = sText.indexOf(sEnd, nI + nStartLen);
                 if (nK > -1) {
                     if (nK) {
@@ -378,7 +437,7 @@
                     else {
                         nI = nK + nEndLen;
                     }
-                    nI = sText.indexOf(sStart, nI);
+                    foundTag = findTag(sText, nI, settings);
                 }
                 // There are no more tags that should be processed
                 else {
@@ -397,6 +456,8 @@
             // Auxiliary API
             
             "convertSettings": convertSettings,
+            
+            "findTag": defaultConfig.findTag,
             
             "filterTag": defaultConfig.filterTag,
             
