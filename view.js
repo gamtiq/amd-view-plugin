@@ -84,7 +84,7 @@
          the default value is `'html'`
     * `directiveTag` - Array, String - No - name(s) of tags that should be parsed and processed as dependency directives;
          the default value is `['link', 'x-link']`
-    * `findTag` - Function - No - function that should be used to find next tag which can represent the dependency directive
+    * `findTag` - Function - No - function that should be used to find next tag which can represent the dependency directive;
          the function takes three parameters: the text, start position for search and the settings object;
          the function should return an object with the following fields:
          + `name` - String - name of found tag
