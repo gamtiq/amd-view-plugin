@@ -73,6 +73,10 @@ The following configuration settings are supported (name - type - can it be set 
      the default value is `'html'`
 * `directiveTag` - Array, String - No - name(s) of tags that should be parsed and processed as dependency directives;
      the default value is `['link', 'x-link']`
+* `dontAddFileExt` - RegExp, String, null - regular expression or string defining such expression that should be used to filter names
+     for which default file extension (defined by `defaultExt` or `defaultInclusionExt` setting) should not be added;
+     if regular expression test for a name results to `true`, addition of default file extension will be skipped;
+     the default value is `null` (filter is not used)
 * `findTag` - Function - No - function that should be used to find next tag which can represent the dependency directive;
      the function takes three parameters: the text, start position for search and the settings object;
      the function should return an object with the following fields:
@@ -129,6 +133,7 @@ var curl = {
         view: {
             defaultExt: "view",
             defaultInclusionExt: "inc",
+            dontAddFileExt: /^proc!/,
             inclusionLoader: "text"
         }
     }
@@ -153,6 +158,7 @@ require.config({
         "view/view": {
             defaultExt: "view",
             defaultInclusionExt: "inc",
+            dontAddFileExt: /^proc!/,
             inclusionLoader: "text"
         }
     }

@@ -2,9 +2,9 @@
  * view.js
  * AMD view! plugin.
  *
- * @version 0.4.0
+ * @version 0.4.1
  * @author Denis Sikuler
- * @license MIT License (c) 2012-2014 Copyright Denis Sikuler
+ * @license MIT License (c) 2012-2015 Copyright Denis Sikuler
  */
 (function () {
 "use strict";
@@ -84,6 +84,10 @@
          the default value is `'html'`
     * `directiveTag` - Array, String - No - name(s) of tags that should be parsed and processed as dependency directives;
          the default value is `['link', 'x-link']`
+    * `dontAddFileExt` - RegExp, String, null - regular expression or string defining such expression that should be used to filter names
+         for which default file extension (defined by `defaultExt` or `defaultInclusionExt` setting) should not be added;
+         if regular expression test for a name results to `true`, addition of default file extension will be skipped;
+         the default value is `null` (filter is not used)
     * `findTag` - Function - No - function that should be used to find next tag which can represent the dependency directive;
          the function takes three parameters: the text, start position for search and the settings object;
          the function should return an object with the following fields:
@@ -157,6 +161,7 @@
             defaultExt: "html",
             defaultInclusionExt: "html",
             directiveTag: ["link", "x-link"],
+            dontAddFileExt: null,
             inclusionLoader: "view"
         },
         // Regular expression to check plugin prefix
@@ -330,7 +335,9 @@
                     if (! pluginRegExp.test(sName)) {
                         sName = (attrMap.type || settings.inclusionLoader) + "!" + sName;
                     }
-                    sName = settings.api.util.base.nameWithExt(sName, settings.defaultInclusionExt);
+                    if (! settings.dontAddFileExt || ! settings.dontAddFileExt.test(sName)) {
+                        sName = settings.api.util.base.nameWithExt(sName, settings.defaultInclusionExt);
+                    }
                     result.dependency = sName;
                     result.text = sInclusionStart + sName + sInclusionEnd;
                     result.inclusion = {name: sName};
@@ -490,8 +497,14 @@
                 }
                 conf = mix({}, defaultConfig, config, settings);
                 conf.api = mix({}, this);
+                if (conf.dontAddFileExt && typeof conf.dontAddFileExt === "string") {
+                    conf.dontAddFileExt = new RegExp(conf.dontAddFileExt);
+                }
+                if (! conf.dontAddFileExt || ! conf.dontAddFileExt.test(sResourceName)) {
+                    sResourceName = basicUtil.nameWithExt(sResourceName, conf.defaultExt);
+                }
                 // Load and parse resource
-                require(["text!" + require.toUrl( basicUtil.nameWithExt(sResourceName, conf.defaultExt) ), "require"], 
+                require(["text!" + require.toUrl(sResourceName), "require"],
                     function(sText, req) {
                         var parseResult = conf.parse(sText, conf),
                             sText = (parseResult && typeof parseResult === "object" 

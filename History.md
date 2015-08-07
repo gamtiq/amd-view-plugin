@@ -1,3 +1,7 @@
+### 0.4.1 / 2015-08-07
+
+* added `dontAddFileExt` configuration setting
+
 ### 0.4.0 / 2014-08-10
 
 * added ability to use specified tags as dependency directives (not only `<link>` tags)
