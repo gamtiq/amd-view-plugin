@@ -137,7 +137,8 @@
     
     The plugin API object that is returned as the plugin's module definition contains `reconfig` field whose value is an object.
     The object can be used to dynamically redefine default values of configuration settings.
-    For that purpose it is necessary to add in the object a field with name of the setting whose value should be changed.
+    For that purpose it is necessary to add in the object a field with name of the setting whose value should be changed
+    (see examples for details).
     
     ## Dependencies
     
