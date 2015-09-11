@@ -1,3 +1,7 @@
+### 0.4.2 / 2015-09-11
+
+* added ability to dynamically redefine default values of configuration settings (`reconfig` field in the plugin's API object)
+
 ### 0.4.1 / 2015-08-07
 
 * added `dontAddFileExt` configuration setting

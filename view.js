@@ -2,7 +2,7 @@
  * view.js
  * AMD view! plugin.
  *
- * @version 0.4.1
+ * @version 0.4.2
  * @author Denis Sikuler
  * @license MIT License (c) 2012-2015 Copyright Denis Sikuler
  */
@@ -134,6 +134,10 @@
     `
     name=value[;name=value...]
     `
+    
+    The plugin API object that is returned as the plugin's module definition contains `reconfig` field whose value is an object.
+    The object can be used to dynamically redefine default values of configuration settings.
+    For that purpose it is necessary to add in the object a field with name of the setting whose value should be changed.
     
     ## Dependencies
     
@@ -364,7 +368,9 @@
     };
     
     define(["./util/base", "./util/object", "./util/string", "module"], function(basicUtil, objUtil, strUtil, module) {
-    
+        
+        var reconfig = {};
+        
         /**
          * Parses the given text and searches for &lt;link&gt; tags that are related to dependency directives.
          * Found tags are removed from the text, extracted resource names form dependency list. 
@@ -459,7 +465,10 @@
         };
         
         return {
-        
+            
+            // Reconfiguration option
+            "reconfig": reconfig,
+            
             // Auxiliary API
             
             "convertSettings": convertSettings,
@@ -495,7 +504,7 @@
                 if (config.config && typeof config.config === "object" && config.config[module.id]) {
                     config = module.config();
                 }
-                conf = mix({}, defaultConfig, config, settings);
+                conf = mix({}, defaultConfig, reconfig, config, settings);
                 conf.api = mix({}, this);
                 if (conf.dontAddFileExt && typeof conf.dontAddFileExt === "string") {
                     conf.dontAddFileExt = new RegExp(conf.dontAddFileExt);
